@@ -17,11 +17,11 @@ async def recommend_route(
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
 
-    food_preferences = user["interests"].get("еда", [])
+    food_preferences = user["interests"].get("food", [])
     optimized_places = []
 
     # Поиск мест по категориям
-    for place_type in user["interests"].get("куда", []):
+    for place_type in user["interests"].get("dest", []):
         nearby_places = await geolocation_service.find_places_nearby(
             lat, lng, place_type
         )
@@ -40,9 +40,22 @@ async def recommend_route(
 
         optimized_places.extend(filtered_places)
 
-    # Оптимизация маршрута
+    # Исправленная обработка оптимизации
+    if not optimized_places:
+        print("WHAHAAHHAHHAHHA")
+        return {"route": []}
+
     routing_service = RoutingService()
     optimized_places = await routing_service.optimize_route(optimized_places, lat, lng)
+    
+    # Добавляем стартовую точку в маршрут
+    start_point = {
+        "name": "Начало маршрута",
+        "description": "Ваше текущее местоположение",
+        "coordinates": {"lat": lat, "lng": lng},
+        "type": "start"
+    }
+    optimized_places = [start_point] + optimized_places
 
     # Преобразование в схемы ответа
     route = []

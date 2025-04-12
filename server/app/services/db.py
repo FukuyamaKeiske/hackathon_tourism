@@ -1,6 +1,6 @@
 from bson import ObjectId
 from motor.motor_asyncio import AsyncIOMotorClient
-from app.models import User, Place, GroupTour, ChatMessage
+from app.models import User, Place, GroupTour, ChatMessage, Booking, Achievement, Quest
 
 
 class DatabaseService:
@@ -44,6 +44,145 @@ class DatabaseService:
 
     async def get_chat_messages(self, group_id: str):
         return await self.db.chat_messages.find({"group_id": group_id}).to_list(100)
+    
+    async def update_user_km(self, email: str, total_km: float):
+        await self.db.users.update_one({"email": email}, {"$set": {"total_km": total_km}})
+
+    def calculate_rank(self, points: int) -> int:
+        rank = 1
+        required_points = 100
+        total_required = 0
+        while total_required + required_points <= points:
+            total_required += required_points
+            rank += 1
+            required_points *= 2
+        return rank
+
+    async def update_user_points(self, email: str, delta: int):
+        user = await self.db.users.find_one({"email": email})
+        if not user:
+            raise ValueError("User not found")
+        new_points = user["profile_points"] + delta
+        if new_points < 0:
+            raise ValueError("Not enough points")
+        new_rank = self.calculate_rank(new_points)
+        await self.db.users.update_one(
+            {"email": email},
+            {"$set": {"profile_points": new_points, "tourist_rank": new_rank}}
+        )
+
+    async def complete_achievement(self, email: str, achievement_id: str):
+        user = await self.db.users.find_one({"email": email})
+        if not user:
+            raise ValueError("User not found")
+        achievements = user.get("achievements", [])
+        for ach in achievements:
+            if str(ach["_id"]) == achievement_id and not ach["completed"]:
+                ach["completed"] = True
+                reward = ach["reward_points"]
+                new_points = user["profile_points"] + reward
+                new_rank = self.calculate_rank(new_points)
+                await self.db.users.update_one(
+                    {"email": email},
+                    {
+                        "$set": {
+                            "achievements": achievements,
+                            "profile_points": new_points,
+                            "tourist_rank": new_rank,
+                        }
+                    },
+                )
+                return
+        raise ValueError("Achievement not found or already completed")
+
+    async def get_all_quests(self):
+        return await self.db.quests.find().to_list(None)
+
+    async def update_quest_progress(self, email: str, quest_id: str, completed_steps: int):
+        user = await self.db.users.find_one({"email": email})
+        if not user:
+            raise ValueError("User not found")
+        quests = user.get("quests", [])
+        quest = await self.db.quests.find_one({"_id": ObjectId(quest_id)})
+        if not quest:
+            raise ValueError("Quest not found")
+        total_steps = quest["total_steps"]
+        if completed_steps > total_steps:
+            completed_steps = total_steps
+        quest_found = False
+        for uq in quests:
+            if str(uq["quest_id"]) == quest_id:
+                quest_found = True
+                uq["completed_steps"] = completed_steps
+                uq["progress"] = (completed_steps / total_steps) * 100 if total_steps > 0 else 0
+                if completed_steps == total_steps:
+                    uq["completed"] = True
+                    reward = quest["reward_points"]
+                    new_points = user["profile_points"] + reward
+                    new_rank = self.calculate_rank(new_points)
+                    await self.db.users.update_one(
+                        {"email": email},
+                        {
+                            "$set": {
+                                "quests": quests,
+                                "profile_points": new_points,
+                                "tourist_rank": new_rank,
+                            }
+                        },
+                    )
+                else:
+                    await self.db.users.update_one(
+                        {"email": email}, {"$set": {"quests": quests}}
+                    )
+                return
+        if not quest_found:
+            new_uq = {
+                "quest_id": ObjectId(quest_id),
+                "completed": False,
+                "progress": (completed_steps / total_steps) * 100 if total_steps > 0 else 0,
+                "completed_steps": completed_steps,
+            }
+            quests.append(new_uq)
+            await self.db.users.update_one(
+                {"email": email}, {"$set": {"quests": quests}}
+            )
+
+    async def sell_souvenir(self, email: str, souvenir_id: str):
+        user = await self.db.users.find_one({"email": email})
+        if not user:
+            raise ValueError("User not found")
+        souvenirs = user.get("souvenirs", [])
+        for souv in souvenirs:
+            if str(souv["_id"]) == souvenir_id:
+                price = souv["price"]
+                new_points = user["profile_points"] + price
+                new_rank = self.calculate_rank(new_points)
+                souvenirs.remove(souv)
+                await self.db.users.update_one(
+                    {"email": email},
+                    {
+                        "$set": {
+                            "souvenirs": souvenirs,
+                            "profile_points": new_points,
+                            "tourist_rank": new_rank,
+                        }
+                    },
+                )
+                return
+        raise ValueError("Souvenir not found")
+
+    async def create_booking(self, email: str, booking: Booking):
+        user = await self.db.users.find_one({"email": email})
+        if not user:
+            raise ValueError("User not found")
+        bookings = user.get("bookings", [])
+        booking_dict = booking.dict(by_alias=True)
+        booking_dict["_id"] = ObjectId()
+        bookings.append(booking_dict)
+        await self.db.users.update_one(
+            {"email": email}, {"$set": {"bookings": bookings}}
+        )
+        return booking_dict
 
 
 # Инициализация сервиса

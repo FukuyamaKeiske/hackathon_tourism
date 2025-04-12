@@ -7,14 +7,17 @@ class RoutingService:
     @staticmethod
     async def optimize_route(places: List[Dict], start_lat: float, start_lng: float):
         # Используем OSRM для оптимизации маршрута
-        coordinates = ";".join(
+        coordinates = f"{start_lng},{start_lat}"
+        coordinates += ";" + ";".join(
             [f"{p['coordinates']['lng']},{p['coordinates']['lat']}" for p in places]
         )
+        
         osrm_url = f"http://router.project-osrm.org/trip/v1/driving/{coordinates}?roundtrip=false&source=first"
 
         async with aiohttp.ClientSession() as session:
             async with session.get(osrm_url) as response:
                 data = await response.json()
+                print(data)
                 optimized_order = data["trips"][0]["geometry"]["coordinates"]
 
                 # Сортируем места по оптимальному порядку
