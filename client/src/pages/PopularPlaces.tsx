@@ -9,7 +9,7 @@ const PopularPlaces: FC = () => {
             <div className="flex flex-col items-center justify-center">
                 <Header />
                 <PopularPlacesWidget />
-                <BottomPanel />
+                <BottomPanel activePage="Карта"/>
                 <div className="absolute bottom-0 z-3 w-full h-[30vh] bg-gradient-to-t from-gray-400 to-transparent pointer-events-none"></div>
             </div>
         </>

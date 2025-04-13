@@ -1,7 +1,5 @@
-import 'dotenv/config'
-import { APIInterests } from './types'
-
-const API_URL = process.env.API_URL
+import { APIInterests, APIRoute } from './types'
+import { API_URL, TOKEN } from './constants'
 
 const register = async (email: string, password: string, interests: APIInterests) => {
     const response = await fetch(`${API_URL}/auth/register`, {
@@ -13,9 +11,9 @@ const register = async (email: string, password: string, interests: APIInterests
             email: email,
             password: password,
             interests: {
-                "куда": interests.where,
-                "с кем": interests.withWho,
-                "еда": interests.food
+                dest: interests.where,
+                with: interests.withWho,
+                food: interests.food
             }
          }),
     })
@@ -36,24 +34,6 @@ const login = async (email: string, password: string) => {
     return response.json()
 }
 
-const changeInterests = async (token: string, interests: APIInterests) => {
-    const response = await fetch(`${API_URL}/profile/interests`, {
-        method: 'PUT',
-        headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${token}`
-        },
-        body: JSON.stringify({ 
-            interests: {
-                "куда": interests.where,
-                "с кем": interests.withWho,
-                "еда": interests.food
-            }
-         }),
-    })
-    return response.json()
-}
-
 const getInterests = async () => {
     const response = await fetch(`${API_URL}/profile/interests`, {
         method: 'GET',
@@ -61,4 +41,15 @@ const getInterests = async () => {
     return response.json() as Promise<APIInterests>
 }
 
-export { register, login, changeInterests, getInterests }
+const getRoute = async (lat: string, lng: string) => {
+    const response = await fetch(`${API_URL}/recommendations/route?lat=${lat}&lng=${lng}`, {
+        method: 'POST',
+        headers: {
+            Authorization: `Bearer ${TOKEN}`,
+            "Access-Control-Allow-Origin": '*'
+        },
+    })
+    return response.json() as Promise<APIRoute[]>
+}
+
+export { register, login, getInterests, getRoute }
