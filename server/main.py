@@ -1,5 +1,7 @@
+import logging
+
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi import FastAPI, WebSocket, WebSocketDisconnect, HTTPException
+from fastapi import FastAPI, WebSocket, WebSocketDisconnect, HTTPException, Request
 
 from jose import JWTError
 
@@ -15,12 +17,16 @@ from app.routes.recommendations import router as recommendations_router
 
 from contextlib import asynccontextmanager
 
+logging.basicConfig(level=logging.DEBUG)
+logger = logging.getLogger(__name__)
+
 app = FastAPI(
     title="Travel Recommendations API",
     description="API для рекомендаций по путешествиям",
-    version="1.0.0",
+    version="1.5.2",
 )
 
+# Настройка CORS
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -40,7 +46,8 @@ async def lifespan(app: FastAPI):
 
 
 @app.middleware("http")
-async def authenticate_user(request, call_next):
+async def authenticate_user(request: Request, call_next):
+    print(request.headers)
     if (
         request.url.path.startswith("/auth")
         or request.url.path.startswith("/ws")
