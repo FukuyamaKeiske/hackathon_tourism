@@ -1,6 +1,7 @@
-from pydantic import BaseModel, Field
-from typing import List, Dict
 from datetime import datetime
+from pydantic import BaseModel
+from typing import List, Dict, Optional
+from .models import Achievement, UserQuest, NFT, DigitalSouvenir, Booking
 
 
 class UserCreate(BaseModel):
@@ -24,6 +25,9 @@ class PlaceResponse(BaseModel):
     description: str
     coordinates: Dict[str, float]
     type: str
+    cuisine: Optional[str] = ""
+    halal: Optional[str] = "no"
+    gallery: List[str] = []
 
 
 class GroupTourCreate(BaseModel):
@@ -71,3 +75,49 @@ class LoginResponse(BaseModel):
 
 class RouteRecommendationResponse(BaseModel):
     route: List[PlaceResponse]
+
+
+class ProfileResponse(BaseModel):
+    email: str
+    interests: Dict[str, List[str]]
+    profile_points: int
+    tourist_rank: int
+    total_km: float
+    travel_days: int
+    achievements: List[Achievement]
+    quests: List[UserQuest]
+    nfts: List[NFT]
+    souvenirs: List[DigitalSouvenir]
+    bookings: List[Booking]
+    groups: List[str]
+
+
+class UpdateKmRequest(BaseModel):
+    total_km: float
+
+
+class UpdatePointsRequest(BaseModel):
+    delta: int
+
+
+class UpdateQuestProgressRequest(BaseModel):
+    completed_steps: int
+
+
+class BookingCreate(BaseModel):
+    type: str
+    details: Dict[str, str]
+
+
+class QuestWithProgress(BaseModel):
+    id: str
+    location: str
+    title: str
+    description: str
+    coordinates: Dict[str, float]
+    link: Optional[str]
+    reward_points: int
+    total_steps: int
+    completed: bool
+    progress: float
+    completed_steps: int

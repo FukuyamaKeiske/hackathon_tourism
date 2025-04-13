@@ -7,6 +7,7 @@ from app.services.chat_service import ChatManager
 from app.routes.chat import router as chat_router
 from app.routes.auth import router as auth_router
 from app.routes.profile import router as profile_router
+from app.routes.interests import router as interests_router
 from app.routes.group_tours import router as group_tours_router
 from app.routes.recommendations import router as recommendations_router
 
@@ -30,17 +31,23 @@ async def lifespan(app: FastAPI):
 
 @app.middleware("http")
 async def authenticate_user(request, call_next):
-    if request.url.path.startswith("/auth") or request.url.path.startswith("/ws"):
+    if (
+        request.url.path.startswith("/auth")
+        or request.url.path.startswith("/ws")
+        or request.url.path.startswith("/interests")
+    ):
         return await call_next(request)
 
     auth_header = request.headers.get("Authorization")
     if not auth_header or not auth_header.startswith("Bearer "):
-        raise HTTPException(status_code=401, detail="Missing or invalid Authorization header")
-    
+        raise HTTPException(
+            status_code=401, detail="Missing or invalid Authorization header"
+        )
+
     token = auth_header.split(" ")[1]
     if not token:
         raise HTTPException(status_code=401, detail="Token not found")
-    
+
     try:
         user = await get_current_user_from_token(token)
         request.state.user = user
@@ -57,6 +64,7 @@ app.include_router(
 )
 app.include_router(group_tours_router, prefix="/group-tours", tags=["Group Tours"])
 app.include_router(chat_router, prefix="/chat", tags=["Chat"])
+app.include_router(interests_router, prefix="/interests", tags=["Interests"])
 
 # Инициализация менеджера чата
 chat_manager = ChatManager()
