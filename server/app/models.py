@@ -1,23 +1,32 @@
 from bson import ObjectId
-from pydantic import BaseModel, Field
 from datetime import datetime
-from typing import List, Dict, Optional
+from pydantic_core import core_schema
+from typing import List, Dict, Optional, Any
+from pydantic import GetCoreSchemaHandler, GetJsonSchemaHandler, BaseModel, Field
 
 
 class PyObjectId(ObjectId):
     @classmethod
-    def __get_validators__(cls):
-        yield cls.validate
-
-    @classmethod
-    def validate(cls, v):
-        if not ObjectId.is_valid(v):
+    def __get_pydantic_core_schema__(
+        cls, source: Any, handler: GetCoreSchemaHandler
+    ) -> core_schema.CoreSchema:
+        def validate(value: Any, info: Any = None) -> ObjectId:
+            if isinstance(value, ObjectId):
+                return value
+            if isinstance(value, str) and ObjectId.is_valid(value):
+                return ObjectId(value)
             raise ValueError("Invalid ObjectId")
-        return ObjectId(v)
+
+        return core_schema.with_info_plain_validator_function(
+            validate,
+            serialization=core_schema.to_string_ser_schema(),
+        )
 
     @classmethod
-    def __get_pydantic_json_schema__(cls, field_schema):
-        field_schema.update(type="string")
+    def __get_pydantic_json_schema__(
+        cls, schema: core_schema.CoreSchema, handler: GetJsonSchemaHandler
+    ) -> dict[str, Any]:
+        return handler(core_schema.str_schema())
 
 
 class Achievement(BaseModel):
@@ -30,11 +39,13 @@ class Achievement(BaseModel):
     nft_id: Optional[PyObjectId] = None
     souvenir_id: Optional[PyObjectId] = None
 
+
 class UserQuest(BaseModel):
     quest_id: PyObjectId
     completed: bool = False
     progress: float = 0.0
     completed_steps: int = 0
+
 
 class NFT(BaseModel):
     id: PyObjectId = Field(default_factory=PyObjectId, alias="_id")
@@ -44,16 +55,19 @@ class NFT(BaseModel):
     buy_price: Optional[float] = None
     sell_price: Optional[float] = None
 
+
 class DigitalSouvenir(BaseModel):
     id: PyObjectId = Field(default_factory=PyObjectId, alias="_id")
     icon: str
     description: str
     price: int
 
+
 class Booking(BaseModel):
     id: PyObjectId = Field(default_factory=PyObjectId, alias="_id")
     type: str
     details: Dict[str, str]
+
 
 class Quest(BaseModel):
     id: PyObjectId = Field(default_factory=PyObjectId, alias="_id")
@@ -68,7 +82,7 @@ class Quest(BaseModel):
     class Config:
         allow_population_by_field_name = True
         arbitrary_types_allowed = True
-        json_encoders = {ObjectId: str}
+
 
 class User(BaseModel):
     id: PyObjectId = Field(default_factory=PyObjectId, alias="_id")
@@ -89,7 +103,7 @@ class User(BaseModel):
     class Config:
         allow_population_by_field_name = True
         arbitrary_types_allowed = True
-        json_encoders = {ObjectId: str}
+
 
 class Place(BaseModel):
     id: PyObjectId = Field(default_factory=PyObjectId, alias="_id")
@@ -98,7 +112,7 @@ class Place(BaseModel):
     coordinates: Dict[str, float]
     type: str
     cuisine: str = ""  # Новая строка
-    halal: str = ""    # Новая строка
+    halal: str = ""  # Новая строка
 
 
 class GroupTour(BaseModel):

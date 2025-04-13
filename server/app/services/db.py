@@ -22,11 +22,27 @@ class DatabaseService:
 
     async def find_places_nearby(self, lat: float, lng: float, place_type: str):
         query = {
-            "coordinates.lat": {"$gte": lat - 0.01, "$lte": lat + 0.01},
-            "coordinates.lng": {"$gte": lng - 0.01, "$lte": lng + 0.01},
+            "coordinates.lat": {"$gte": lat - 0.05, "$lte": lat + 0.05},
+            "coordinates.lng": {"$gte": lng - 0.05, "$lte": lng + 0.05},
             "type": place_type,
         }
-        return await self.db.places.find(query).to_list(10)
+        places = await self.db.places.find(query).to_list(10)
+        return [
+            {
+                "place_id": str(place["_id"]),
+                "name": place.get("name", "Без названия"),
+                "description": place.get("description", ""),
+                "coordinates": place["coordinates"],
+                "type": place["type"],
+                "cuisine": place.get("cuisine", ""),
+                "halal": place.get("halal", "no"),
+                "access": place.get("access", "public"),
+                "gallery": place.get("gallery", []),
+                "partner": True,
+                "work_time": place.get("work_time", "Круглосуточно")  # Используем work_time или "Круглосуточно"
+            }
+            for place in places
+        ]
 
     async def create_group_tour(self, name: str, description: str, coordinates: dict):
         tour = GroupTour(
@@ -44,19 +60,11 @@ class DatabaseService:
 
     async def get_chat_messages(self, group_id: str):
         return await self.db.chat_messages.find({"group_id": group_id}).to_list(100)
-    
-    async def update_user_km(self, email: str, total_km: float):
-        await self.db.users.update_one({"email": email}, {"$set": {"total_km": total_km}})
 
-    def calculate_rank(self, points: int) -> int:
-        rank = 1
-        required_points = 100
-        total_required = 0
-        while total_required + required_points <= points:
-            total_required += required_points
-            rank += 1
-            required_points *= 2
-        return rank
+    async def update_user_km(self, email: str, total_km: float):
+        await self.db.users.update_one(
+            {"email": email}, {"$set": {"total_km": total_km}}
+        )
 
     async def update_user_points(self, email: str, delta: int):
         user = await self.db.users.find_one({"email": email})
@@ -68,8 +76,18 @@ class DatabaseService:
         new_rank = self.calculate_rank(new_points)
         await self.db.users.update_one(
             {"email": email},
-            {"$set": {"profile_points": new_points, "tourist_rank": new_rank}}
+            {"$set": {"profile_points": new_points, "tourist_rank": new_rank}},
         )
+
+    def calculate_rank(self, points: int) -> int:
+        rank = 1
+        required_points = 100
+        total_required = 0
+        while total_required + required_points <= points:
+            total_required += required_points
+            rank += 1
+            required_points *= 2
+        return rank
 
     async def complete_achievement(self, email: str, achievement_id: str):
         user = await self.db.users.find_one({"email": email})
@@ -98,7 +116,9 @@ class DatabaseService:
     async def get_all_quests(self):
         return await self.db.quests.find().to_list(None)
 
-    async def update_quest_progress(self, email: str, quest_id: str, completed_steps: int):
+    async def update_quest_progress(
+        self, email: str, quest_id: str, completed_steps: int
+    ):
         user = await self.db.users.find_one({"email": email})
         if not user:
             raise ValueError("User not found")
@@ -114,7 +134,9 @@ class DatabaseService:
             if str(uq["quest_id"]) == quest_id:
                 quest_found = True
                 uq["completed_steps"] = completed_steps
-                uq["progress"] = (completed_steps / total_steps) * 100 if total_steps > 0 else 0
+                uq["progress"] = (
+                    (completed_steps / total_steps) * 100 if total_steps > 0 else 0
+                )
                 if completed_steps == total_steps:
                     uq["completed"] = True
                     reward = quest["reward_points"]
@@ -139,7 +161,9 @@ class DatabaseService:
             new_uq = {
                 "quest_id": ObjectId(quest_id),
                 "completed": False,
-                "progress": (completed_steps / total_steps) * 100 if total_steps > 0 else 0,
+                "progress": (
+                    (completed_steps / total_steps) * 100 if total_steps > 0 else 0
+                ),
                 "completed_steps": completed_steps,
             }
             quests.append(new_uq)
@@ -185,7 +209,6 @@ class DatabaseService:
         return booking_dict
 
 
-# Инициализация сервиса
 db_service = DatabaseService(
     uri="mongodb://localhost:27017/",
     db_name="tourism_db",

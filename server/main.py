@@ -1,4 +1,6 @@
+from fastapi.middleware.cors import CORSMiddleware
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect, HTTPException
+
 from jose import JWTError
 
 from app.auth import get_current_user_from_token
@@ -17,6 +19,14 @@ app = FastAPI(
     title="Travel Recommendations API",
     description="API для рекомендаций по путешествиям",
     version="1.0.0",
+)
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
 )
 
 

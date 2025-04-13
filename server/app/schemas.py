@@ -28,6 +28,8 @@ class PlaceResponse(BaseModel):
     cuisine: Optional[str] = ""
     halal: Optional[str] = "no"
     gallery: List[str] = []
+    partner: bool = False
+    work_time: str = "Круглосуточно"
 
 
 class GroupTourCreate(BaseModel):
