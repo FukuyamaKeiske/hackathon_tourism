@@ -36,8 +36,6 @@ async def recommend_route(
     for place_type in dest_prefs:
         places = await geolocation_service.find_places_nearby(lat, lng, place_type)
         main_places.extend(places)
-    
-    # print(main_places)
 
     main_places = await filter_by_with(main_places, with_prefs)
     if not main_places:
@@ -68,7 +66,9 @@ async def recommend_route(
         "type": "start",
         "cuisine": "",
         "halal": "no",
-        "gallery": []
+        "gallery": [],
+        "partner": False,
+        "work_time": "Круглосуточно",
     }
     route = [start_point] + route
 
@@ -81,7 +81,9 @@ async def recommend_route(
             type=place["type"],
             cuisine=place.get("cuisine", ""),
             halal=place.get("halal", "no"),
-            gallery=place.get("gallery", [])
+            gallery=place.get("gallery", []),
+            partner=place.get("partner", False),
+            work_time=place.get("work_time", "Круглосуточно"),
         )
         for place in route
     ]
