@@ -1,5 +1,20 @@
-import { APIInterests, APIRoute } from './types'
+import { APIInterests, APIRoute, APIQuest } from './types'
 import { API_URL, TOKEN } from './constants'
+
+const login = async (email: string, password: string) => {
+    const response = await fetch(`${API_URL}/auth/login`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ 
+            email: email,
+            password: password
+         }),
+    })
+    return response.json()
+}
+
 
 const register = async (email: string, password: string, interests: APIInterests) => {
     const response = await fetch(`${API_URL}/auth/register`, {
@@ -20,20 +35,6 @@ const register = async (email: string, password: string, interests: APIInterests
     return response.json()
 }
 
-const login = async (email: string, password: string) => {
-    const response = await fetch(`${API_URL}/auth/login`, {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ 
-            email: email,
-            password: password
-         }),
-    })
-    return response.json()
-}
-
 const getInterests = async () => {
     const response = await fetch(`${API_URL}/profile/interests`, {
         method: 'GET',
@@ -49,7 +50,31 @@ const getRoute = async (lat: string, lng: string) => {
             "Access-Control-Allow-Origin": '*'
         },
     })
-    return response.json() as Promise<APIRoute[]>
+    return response.json() as Promise<{route: APIRoute[]}>
 }
 
-export { register, login, getInterests, getRoute }
+const getQuests = async () => {
+    const response = await fetch(`${API_URL}/profile/quests`, {
+        method: 'GET',
+        headers: {
+            Authorization: `Bearer ${TOKEN}`,
+            "Access-Control-Allow-Origin": '*'
+        },
+    });
+    return response.json() as Promise<APIQuest[]>;
+};
+
+const getNFTs = async () => {
+    const response = await fetch(`${API_URL}/profile/nfts`, {
+        method: 'GET',
+        headers: {
+            Authorization: `Bearer ${TOKEN}`,
+            "Access-Control-Allow-Origin": '*'
+        },
+    });
+    return response.json();
+};
+
+
+
+export { register, login, getInterests, getRoute, getQuests };

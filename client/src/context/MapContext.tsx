@@ -1,19 +1,30 @@
-import { FC, createContext, useMemo, useState } from "react";
+// Пример обновленного useMap.ts
+import { createContext, useContext, useState } from "react";
 import { MapContextType } from "./types";
-import { Map, Marker } from "@2gis/mapgl/types";
 
-export const MapContext = createContext<MapContextType | undefined>(undefined)
+const MapContext = createContext<MapContextType | undefined>(undefined);
 
-const MapProvider: FC<{ children: React.ReactNode}> = ({ children }) => {
-    const [mapInstance, setMapInstance] = useState<Map | null>(null);
-    const [originMarker, setOriginMarker] = useState<Marker | null>(null);
-    const values = useMemo(() => ({ mapInstance, setMapInstance, originMarker, setOriginMarker }), [mapInstance, setMapInstance, originMarker, setOriginMarker])
+export function MapProvider({ children }: { children: React.ReactNode }) {
+  const [mapInstance, setMapInstance] = useState<any>(null);
+  const [originMarker, setOriginMarker] = useState<any>(null);
+  const [markers, setMarkers] = useState<any[]>([]);
 
-    return (
-        <MapContext.Provider value={values}>
-            {children}
-        </MapContext.Provider>
-    );
+  const value = {
+    mapInstance,
+    setMapInstance,
+    originMarker,
+    setOriginMarker,
+    markers,
+    setMarkers,
+  };
+
+  return <MapContext.Provider value={value}>{children}</MapContext.Provider>;
+}
+
+export const useMap = () => {
+  const context = useContext(MapContext);
+  if (context === undefined) {
+    throw new Error("useMap must be used within a MapProvider");
+  }
+  return context;
 };
-
-export default MapProvider;

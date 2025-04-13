@@ -1,2 +1,2 @@
-export const TOKEN = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJ5YXBpZG9yQGdtYWlsLmNvbSIsImV4cCI6MTc0NDUzMzI5MX0.LWLqHVghf1ZTszpzbqrfBStGlrd9JwANdWKhPSP2W_w";
+export const TOKEN = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJ0ZXN0QHRlc3QudGVzdCIsImV4cCI6MTc0NDU0MjQzMX0.TKvqMPc1YwDNjPu35kPuJMM04aST5msIYuoVM4iqXoU";
 export const API_URL = "https://cs2x3kdk-8000.euw.devtunnels.ms";

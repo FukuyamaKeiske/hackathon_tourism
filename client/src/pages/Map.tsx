@@ -2,7 +2,7 @@ import { FC } from "react";
 import Header from "../widgets/Header/ui/Header";
 import BottomPanel from "../widgets/BottomPanel/ui/BottomPanel";
 import MapWidget from "../widgets/MapWidget/ui/MapWidget";
-import MapProvider from "../context/MapContext";
+import {MapProvider} from "../context/MapContext";
 
 const Map: FC = () => {
     return (

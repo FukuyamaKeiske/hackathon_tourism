@@ -19,3 +19,20 @@ export interface APIRoute {
     partner?: boolean;
     work_time?: string;
 }
+
+export interface APIQuest {
+    id: string;
+    location: string;
+    title: string;
+    description: string;
+    coordinates: {
+        lat: number;
+        lng: number;
+    };
+    link?: string;
+    reward_points: number;
+    total_steps: number;
+    completed: boolean;
+    progress: number;
+    completed_steps: number;
+}
