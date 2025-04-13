@@ -69,7 +69,7 @@ class GeolocationService:
     }
 
     async def find_places_nearby(
-        self, lat: float, lng: float, place_type: str, radius: int = 10000
+        self, lat: float, lng: float, place_type: str, radius: int = 7000
     ) -> List[Dict]:
         """Поиск мест через 2GIS API."""
         params = {

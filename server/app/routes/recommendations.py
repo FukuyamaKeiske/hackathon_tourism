@@ -34,7 +34,9 @@ async def recommend_route(
 
     main_places = []
     for place_type in dest_prefs:
+        print(place_type)
         places = await geolocation_service.find_places_nearby(lat, lng, place_type)
+        print(places)
         main_places.extend(places)
     
     # print(main_places)
