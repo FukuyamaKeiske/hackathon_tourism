@@ -1,1 +1,8 @@
-@import 'tailwindcss'
+@import 'tailwindcss';
+
+html, body {
+    overflow-y: hidden;
+    height: 100%;
+    margin: 0;
+    font-family: Inter;
+}
