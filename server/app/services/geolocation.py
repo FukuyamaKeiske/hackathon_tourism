@@ -1,93 +1,228 @@
 import aiohttp
-import asyncio
 from typing import List, Dict
-from app.core.config import settings  # Для настройки таймаутов
+from app.core.config import settings
 
 
 class GeolocationService:
-    OVERPASS_URL = "http://overpass-api.de/api/interpreter"
+    DGIS_API_URL = "https://catalog.api.2gis.com/3.0/items"
 
-    @staticmethod
-    async def find_places_nearby(lat: float, lng: float, place_type: str) -> List[Dict]:
-        osm_tags = {
-            "достопримечательности": "tourism=attraction",
-            "рестораны": "amenity=restaurant",
-            "бары": "amenity=bar",
-            "активный отдых": "leisure=sports_centre",
-            "парки": "leisure=park",
-            "конференции и офисы": "building=office",
+    # Маппинг категорий dest на rubric_id 2GIS (примерные ID, уточните в документации 2GIS)
+    DGIS_RUBRICS = {
+        "Исторические места": "attraction.monument",
+        "Сады и парки": "recreation.park",
+        "Агротуризм": "agrotourism",  # Уточните категорию
+        "Рестораны": "catering.restaurant",
+        "Музеи": "culture.museum",
+        "Театры": "culture.theatre",
+        "Клубы": "catering.nightclub",
+        "Достопримечательности": "attraction",
+        "Здоровье": "healthcare.spa",
+        "Спорт": "sport",
+        "Музыка": "music",  # Уточните категорию
+        "Активный отдых": "sport.outdoor",
+    }
+
+    # Совместимость мест с параметром "with"
+    WITH_COMPATIBILITY = {
+        "Один": [
+            "Клубы",
+            "Здоровье",
+            "Спорт",
+            "Активный отдых",
+            "Музеи",
+            "Агротуризм",
+            "Музыка",
+            "Рестораны",
+            "Театры",
+            "Достопримечательности",
+            "Сады и парки",
+            "Исторические места",
+        ],
+        "Семья": [
+            "Клубы",
+            "Здоровье",
+            "Спорт",
+            "Активный отдых",
+            "Музеи",
+            "Агротуризм",
+            "Музыка",
+            "Рестораны",
+            "Театры",
+            "Достопримечательности",
+            "Сады и парки",
+            "Исторические места",
+        ],
+        "Бизнес": [
+            "Клубы",
+            "Здоровье",
+            "Спорт",
+            "Активный отдых",
+            "Музеи",
+            "Агротуризм",
+            "Музыка",
+            "Рестораны",
+            "Театры",
+            "Достопримечательности",
+            "Сады и парки",
+            "Исторические места",
+        ],
+    }
+
+    async def find_places_nearby(
+        self, lat: float, lng: float, place_type: str, radius: int = 10000
+    ) -> List[Dict]:
+        """Поиск мест через 2GIS API."""
+        params = {
+            "point": f"{lng},{lat}",
+            "radius": radius,
+            "type": "branch,attraction",
+            "q": self.DGIS_RUBRICS.get(place_type, "tourism"),
+            "key": settings.DGIS_API_KEY,
+            "fields": "items.point,items.name,items.description,items.rubrics,items.access,items.external_content",
+            "locale": "ru_RU",
+            "sort": "distance",
         }
-
-        # Исправленный запрос с правильным порядком координат (широта, долгота)
-        query = f"""
-[out:json][timeout:25];
-(
-  node["{osm_tags["рестораны"]}"](around:10000,{lat},{lng});
-  way["{osm_tags["рестораны"]}"](around:10000,{lat},{lng});
-  relation["{osm_tags["рестораны"]}"](around:10000,{lat},{lng});
-);
-out body;
->;
-out skel qt;
-"""
-
-        print("Executing Overpass query:")
-        print(query)
 
         async with aiohttp.ClientSession() as session:
             try:
-                async with session.post(
-                    GeolocationService.OVERPASS_URL,
-                    data=query,
-                    timeout=settings.OVERPASS_TIMEOUT,
-                ) as response:
-                    response.raise_for_status()  # Проверка HTTP ошибок
+                async with session.get(self.DGIS_API_URL, params=params) as response:
+                    response.raise_for_status()
                     data = await response.json()
-
-                    # Обработка всех типов элементов (node, way, relation)
-                    elements = []
-                    for element in data.get("elements", []):
-                        if element.get("type") == "node":
-                            elements.append(element)
-                        elif element.get("type") in ["way", "relation"]:
-                            # Для ways/relations берем центральные координаты
-                            center = element.get("center", {})
-                            if center:
-                                element["lat"] = center["lat"]
-                                element["lon"] = center["lon"]
-                                elements.append(element)
-
+                    items = data.get("result", {}).get("items", [])
                     return [
                         {
-                            "name": e.get("tags", {}).get("name", "Без названия"),
-                            "description": e.get("tags", {}).get("description", ""),
-                            "coordinates": {"lat": e.get("lat"), "lng": e.get("lon")},
+                            "place_id": item["id"],
+                            "name": item.get("name", "Без названия"),
+                            "description": item.get("description", ""),
+                            "coordinates": {
+                                "lat": item["point"]["lat"],
+                                "lng": item["point"]["lon"],
+                            },
                             "type": place_type,
-                            "cuisine": e.get("tags", {}).get("cuisine", ""),
-                            "halal": "yes" if "halal" in e.get("tags", {}) else "no",
+                            "cuisine": ",".join(
+                                [
+                                    rubric.get("name", "")
+                                    for rubric in item.get("rubrics", [])
+                                    if "catering" in rubric.get("kind", "")
+                                ]
+                            ),
+                            "halal": (
+                                "yes"
+                                if any(
+                                    "halal" in rubric.get("name", "").lower()
+                                    for rubric in item.get("rubrics", [])
+                                )
+                                else "no"
+                            ),
+                            "access": item.get("access", "public"),
+                            "gallery": [
+                                content["main_photo_url"]
+                                for content in item.get("external_content", [])
+                                if content.get("type") in ["photo", "photo_album"]
+                                and "main_photo_url" in content
+                            ],
                         }
-                        for e in elements
-                        if "lat" in e and "lon" in e
+                        for item in items
+                        if "point" in item
                     ]
             except Exception as e:
-                print(f"Overpass API error: {str(e)}")
-                print(f"Query: {query}")
+                print(f"2GIS API error: {str(e)}")
                 return []
 
-    @staticmethod
-    async def calculate_distance(
-        lat1: float, lng1: float, lat2: float, lng2: float
-    ) -> float:
-        # Используем OSRM для расчёта пешеходных маршрутов
-        osrm_url = f"http://router.project-osrm.org/route/v1/walking/{lng1},{lat1};{lng2},{lat2}?overview=false"
+    async def find_food_places(
+        self, lat: float, lng: float, food_prefs: List[str], radius: int = 5000
+    ) -> List[Dict]:
+        """Поиск мест для еды с учетом предпочтений."""
+        params = {
+            "point": f"{lng},{lat}",
+            "radius": radius,
+            "type": "branch",
+            "q": "catering.restaurant,catering.cafe",
+            "key": settings.DGIS_API_KEY,
+            "fields": "items.point,items.name,items.description,items.rubrics,items.access,items.external_content",
+            "locale": "ru_RU",
+            "sort": "distance",
+        }
 
+        async with aiohttp.ClientSession() as session:
+            try:
+                async with session.get(self.DGIS_API_URL, params=params) as response:
+                    response.raise_for_status()
+                    data = await response.json()
+                    items = data.get("result", {}).get("items", [])
+                    print(items)
+                    places = [
+                        {
+                            "place_id": item["id"],
+                            "name": item.get("name", "Без названия"),
+                            "description": item.get("description", ""),
+                            "coordinates": {
+                                "lat": item["point"]["lat"],
+                                "lng": item["point"]["lon"],
+                            },
+                            "type": "restaurant",
+                            "cuisine": ",".join(
+                                [
+                                    rubric.get("name", "")
+                                    for rubric in item.get("rubrics", [])
+                                    if "catering" in rubric.get("kind", "")
+                                ]
+                            ),
+                            "halal": (
+                                "yes"
+                                if any(
+                                    "halal" in rubric.get("name", "").lower()
+                                    for rubric in item.get("rubrics", [])
+                                )
+                                else "no"
+                            ),
+                            "access": item.get("access", "public"),
+                            "gallery": [
+                                content["main_photo_url"]
+                                for content in item.get("external_content", [])
+                                if content.get("type") == "photo"
+                                and "main_photo_url" in content
+                            ],
+                        }
+                        for item in items
+                        if "point" in item
+                    ]
+
+                    # Фильтрация по предпочтениям еды
+                    filtered = []
+                    for place in places:
+                        cuisine = place["cuisine"].lower()
+                        # if "Халяль" in food_prefs and place["halal"] != "yes":
+                        #     continue
+                        # if (
+                        #     "Вегетарианство" in food_prefs
+                        #     and "vegetarian" not in cuisine
+                        # ):
+                        #     continue
+                        # if "Мясо птицы" in food_prefs and "chicken" not in cuisine:
+                        #     continue
+                        # if "Мясо животных" in food_prefs and "meat" not in cuisine:
+                        #     continue
+                        # if "Морепродукты" in food_prefs and "seafood" not in cuisine:
+                        #     continue
+                        # if "Десерты" in food_prefs and "dessert" not in cuisine:
+                        #     continue
+                        filtered.append(place)
+                    return filtered[:4]
+            except Exception as e:
+                print(f"2GIS API error: {str(e)}")
+                return []
+
+    async def calculate_distance(
+        self, lat1: float, lng1: float, lat2: float, lng2: float
+    ) -> float:
+        osrm_url = f"http://router.project-osrm.org/route/v1/walking/{lng1},{lat1};{lng2},{lat2}?overview=false"
         async with aiohttp.ClientSession() as session:
             try:
                 async with session.get(osrm_url) as response:
                     data = await response.json()
-                    return data["routes"][0]["distance"] / 1000  # В километрах
+                    return data["routes"][0]["distance"] / 1000
             except Exception:
-                # Резервный расчёт по формуле Haversine
                 from math import radians, sin, cos, sqrt, atan2
 
                 R = 6371.0
@@ -99,5 +234,4 @@ out skel qt;
                 return R * c
 
 
-# Инициализация сервиса
 geolocation_service = GeolocationService()

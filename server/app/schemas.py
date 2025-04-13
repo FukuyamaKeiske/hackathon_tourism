@@ -25,6 +25,9 @@ class PlaceResponse(BaseModel):
     description: str
     coordinates: Dict[str, float]
     type: str
+    cuisine: Optional[str] = ""
+    halal: Optional[str] = "no"
+    gallery: List[str] = []
 
 
 class GroupTourCreate(BaseModel):
@@ -88,18 +91,23 @@ class ProfileResponse(BaseModel):
     bookings: List[Booking]
     groups: List[str]
 
+
 class UpdateKmRequest(BaseModel):
     total_km: float
+
 
 class UpdatePointsRequest(BaseModel):
     delta: int
 
+
 class UpdateQuestProgressRequest(BaseModel):
     completed_steps: int
+
 
 class BookingCreate(BaseModel):
     type: str
     details: Dict[str, str]
+
 
 class QuestWithProgress(BaseModel):
     id: str
